@@ -21,19 +21,19 @@
 @media (prefers-color-scheme: light) {
   :root {
     color-scheme: light;
-    --terminal-bg: #f5f3eb;
-    --terminal-fg: #30372c;
-    --tui-bg: #f5f3eb;
-    --tui-input: #fffef8;
-    --tui-text: #30372c;
-    --tui-dim: #65705d;
-    --tui-border: #87917b;
-    --tui-rule: #d1d6c8;
+    --terminal-bg: #ffffff;
+    --terminal-fg: #010101;
+    --tui-bg: #ffffff;
+    --tui-input: #f4f4f4;
+    --tui-text: #000000;
+    --tui-dim: #666666;
+    --tui-border: #a9a9a9;
+    --tui-rule: #e5e5e5;
     --tui-accent: #365d16;
     --tui-selected: #e0e8d4;
-    --tui-danger: #9d3029;
-    --tui-danger-bg: #f5e5df;
-    --tui-backdrop: #e8e6dcdf;
+    --tui-danger: #990000;
+    --tui-danger-bg: #fff0f0;
+    --tui-backdrop: #ffffffdf;
   }
 }
 

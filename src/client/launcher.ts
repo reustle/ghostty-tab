@@ -88,7 +88,7 @@ export function showSessionLauncher(
           <div class="session-list-heading"><span>SESSION <span class="session-count">[..]</span></span><button class="refresh-sessions" type="button" aria-label="Refresh running sessions">[ refresh ]</button></div>
           <div class="session-list" aria-label="Running local sessions" aria-busy="true"></div>
           <p class="session-picker-status hint" role="status" aria-live="polite">Loading sessions...</p>
-          <p class="resume-note hint">Select a name to attach.<br>Both local and remote tmux sessions reopen from their bookmarked URL. Temporary shells cannot be reopened.</p>
+          <p class="resume-note hint">Select a name to attach.<br>Bookmark local or remote tmux sessions to reopen them later.</p>
         </section>
       </div>
       <footer class="tui-footer"><span><kbd>Tab</kbd> move <span aria-hidden="true">/</span> <kbd>↑ ↓</kbd> choose <span aria-hidden="true">/</span> <kbd>Enter</kbd> open</span><span class="footer-ready"><span aria-hidden="true">■</span> ready</span></footer>
