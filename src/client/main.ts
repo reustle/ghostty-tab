@@ -1,12 +1,11 @@
 import { FitAddon, Terminal, init } from "ghostty-web";
 
 import "./style.css";
+import { createTerminalFooter } from "./footer.js";
 import { fixBlackBackgrounds } from "./renderer.js";
 import { startTerminalSession } from "./session.js";
 import { getTerminalTheme } from "./theme.js";
 import { createMouseWheelHandler } from "./wheel.js";
-
-const DEFAULT_TITLE = "ghostty-tab";
 
 void main().catch((error) => {
   console.error("Could not start ghostty-tab:", error);
@@ -41,40 +40,19 @@ async function main(): Promise<void> {
   terminal.attachCustomWheelEventHandler(
     createMouseWheelHandler(terminal, canvas),
   );
+  const footer = createTerminalFooter(terminal);
   fitAddon.fit();
   fitAddon.observeResize();
 
-  let latestTerminalTitle = "";
-  let sessionLabel = "";
-
-  function fallbackTitle(): string {
-    return sessionLabel || DEFAULT_TITLE;
-  }
-
-  function refreshDocumentTitle(): void {
-    document.title = latestTerminalTitle || fallbackTitle();
-  }
-
-  const titleSubscription = terminal.onTitleChange((title) => {
-    latestTerminalTitle = title.trim();
-    refreshDocumentTitle();
-  });
-
   const session = await startTerminalSession(terminal);
-  if (session.session) {
-    sessionLabel =
-      session.session.target.kind === "ssh"
-        ? `${session.session.name}@${session.session.target.sshTarget}`
-        : session.session.name;
-  }
-  refreshDocumentTitle();
+  footer.setSession(session.session);
   terminal.focus();
 
   window.addEventListener(
     "pagehide",
     () => {
       session.dispose();
-      titleSubscription.dispose();
+      footer.dispose();
       terminal.dispose();
     },
     { once: true },

@@ -54,6 +54,12 @@ The launcher and terminal follow your browser's light or dark preference. The la
 updates immediately when that preference changes; reopen the tab to apply a new terminal
 palette, since ghostty-web applies its theme when the terminal opens.
 
+The bottom bar shows your session, SSH destination when applicable, and terminal dimensions.
+Select **[ rename tab ]** to give the browser tab a custom title. The title takes priority
+over shell and tmux title changes and survives reloads in that browser tab, separately for
+each session. It does not rename the tmux session or change its bookmark URL. Choose
+**[ use automatic title ]** (or save an empty title) to follow terminal titles again.
+
 ## Development
 
 ```bash
