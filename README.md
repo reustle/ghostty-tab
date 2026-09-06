@@ -9,6 +9,8 @@ A real terminal in your browser, powered by
 [ghostty-web](https://github.com/coder/ghostty-web).
 Open a temporary shell, or bookmark a local or remote tmux session and pick up where you left off.
 
+<img width="1201" height="783" alt="image" src="https://github.com/user-attachments/assets/09e367d3-d207-413d-8a57-daa6cc60cb18" />
+
 ## Boot up
 
 Requires **Node.js 20+** and **Bun 1.3.13**. Add **tmux** for persistent sessions and
