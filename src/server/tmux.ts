@@ -13,6 +13,13 @@ const TMUX_SESSION_OPTIONS = [
   ["set-titles", "on"],
   ["set-titles-string", LOCAL_TMUX_TITLE_FORMAT],
 ] as const;
+// Key tables are shared by every session on our dedicated tmux server.
+// The browser already converts wheel movement to rows, so do not multiply by 5.
+const TMUX_COPY_MODE_TABLES = ["copy-mode", "copy-mode-vi"] as const;
+const TMUX_WHEEL_BINDINGS = [
+  ["WheelUpPane", "select-pane; send-keys -X -N 1 scroll-up"],
+  ["WheelDownPane", "select-pane; send-keys -X -N 1 scroll-down"],
+] as const;
 
 interface CommandResult {
   status: number;
@@ -98,6 +105,12 @@ export function buildRemoteTmuxCommand(
     `tmux -L ${TMUX_SOCKET_NAME} set-option -t ${exactTarget}: mouse on`,
     `tmux -L ${TMUX_SOCKET_NAME} set-option -t ${exactTarget}: set-titles on`,
     `tmux -L ${TMUX_SOCKET_NAME} set-option -t ${exactTarget}: set-titles-string '${REMOTE_TMUX_TITLE_FORMAT}'`,
+    ...TMUX_COPY_MODE_TABLES.flatMap((table) =>
+      TMUX_WHEEL_BINDINGS.map(
+        ([key, command]) =>
+          `tmux -L ${TMUX_SOCKET_NAME} bind-key -T ${table} ${key} '${command}'`,
+      ),
+    ),
   ].join(" && ");
   const attach = `exec tmux -L ${TMUX_SOCKET_NAME} attach-session -t ${exactTarget}`;
   return `${create}; ${configure} && ${attach}`;
@@ -198,6 +211,20 @@ export async function ensureTmuxSession(
         `Could not configure tmux option "${option}" for session "${sessionName}"`,
         optionResult,
       );
+    }
+  }
+  for (const table of TMUX_COPY_MODE_TABLES) {
+    for (const [key, command] of TMUX_WHEEL_BINDINGS) {
+      const bindingResult = await runTmux(
+        withSocket(["bind-key", "-T", table, key, command]),
+        options,
+      );
+      if (!commandSucceeded(bindingResult)) {
+        throw commandError(
+          `Could not configure tmux binding "${key}" in "${table}"`,
+          bindingResult,
+        );
+      }
     }
   }
 }

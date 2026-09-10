@@ -105,46 +105,35 @@ try {
   );
   await waitFor(() => first.output().includes("history-line-200"));
   const screenBeforeScroll = await tmux("capture-pane", "-p", "-t", "=work:");
-  first.socket.send(encodeInputMessage("\x1b[<64;10;10M".repeat(5)));
-  await waitFor(
-    async () =>
-      (await tmux(
-        "display-message",
-        "-p",
-        "-t",
-        "=work:",
-        "#{pane_in_mode}",
-      )) === "1",
-  );
-  // The first gesture enters copy mode; subsequent gestures move its viewport.
-  first.socket.send(encodeInputMessage("\x1b[<64;10;10M".repeat(5)));
-  await waitFor(
-    async () =>
-      Number(
-        await tmux(
-          "display-message",
-          "-p",
-          "-t",
-          "=work:",
-          "#{scroll_position}",
-        ),
-      ) > 0,
-  );
-  first.socket.send(encodeInputMessage("\x1b[<65;10;10M".repeat(30)));
-  await waitFor(
-    async () =>
-      (await tmux(
-        "display-message",
-        "-p",
-        "-t",
-        "=work:",
-        "#{pane_in_mode}",
-      )) === "0",
-  );
-  assert.equal(
-    await tmux("capture-pane", "-p", "-t", "=work:"),
-    screenBeforeScroll,
-  );
+  const paneFormat = (format: string) =>
+    tmux("display-message", "-p", "-t", "=work:", format);
+  const scrollPosition = async () =>
+    Number(await paneFormat("#{scroll_position}"));
+  for (const mode of ["emacs", "vi"]) {
+    await tmux("set-window-option", "-t", "=work:", "mode-keys", mode);
+    first.socket.send(encodeInputMessage("\x1b[<64;10;10M"));
+    await waitFor(async () => (await paneFormat("#{pane_in_mode}")) === "1");
+    // The first gesture enters copy mode; each subsequent event moves one row.
+    const initialPosition = await scrollPosition();
+    for (let step = 1; step <= 2; step++) {
+      first.socket.send(encodeInputMessage("\x1b[<64;10;10M"));
+      await waitFor(
+        async () => (await scrollPosition()) !== initialPosition + step - 1,
+      );
+      assert.equal(await scrollPosition(), initialPosition + step, mode);
+    }
+    first.socket.send(encodeInputMessage("\x1b[<65;10;10M"));
+    await waitFor(async () => (await scrollPosition()) !== initialPosition + 2);
+    assert.equal(await scrollPosition(), initialPosition + 1, mode);
+    first.socket.send(
+      encodeInputMessage("\x1b[<65;10;10M".repeat(initialPosition + 2)),
+    );
+    await waitFor(async () => (await paneFormat("#{pane_in_mode}")) === "0");
+    assert.equal(
+      await tmux("capture-pane", "-p", "-t", "=work:"),
+      screenBeforeScroll,
+    );
+  }
   const originalPid = await tmux(
     "display-message",
     "-p",

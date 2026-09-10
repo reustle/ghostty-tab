@@ -49,7 +49,7 @@ describe("isolated tmux sessions", () => {
 
   test("creates and configures a missing persistent session", async () => {
     const calls: SpawnCall[] = [];
-    const statuses = [1, 0, 0, 0, 0, 0];
+    const statuses = [1, 0, 0, 0, 0, 0, 0, 0, 0, 0];
     const run = async (
       command: string,
       args: readonly string[],
@@ -67,14 +67,14 @@ describe("isolated tmux sessions", () => {
       },
     );
 
-    expect(calls).toHaveLength(6);
+    expect(calls).toHaveLength(10);
     expect(calls.every((call) => call.command === "tmux")).toBe(true);
     expect(
       calls.every(
         (call) => call.args[0] === "-L" && call.args[1] === TMUX_SOCKET_NAME,
       ),
     ).toBe(true);
-    expect(calls.slice(2).map((call) => call.args)).toEqual([
+    expect(calls.slice(2, 6).map((call) => call.args)).toEqual([
       [
         "-L",
         TMUX_SOCKET_NAME,
@@ -109,7 +109,7 @@ describe("isolated tmux sessions", () => {
   });
 
   test("attaches when another connection wins the session creation race", async () => {
-    const statuses = [1, 1, 0, 0, 0, 0, 0];
+    const statuses = [1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0];
     await ensureTmuxSession(
       { sessionName: "work", cols: 80, rows: 24, cwd: "/tmp" },
       {
@@ -149,6 +149,10 @@ describe("isolated tmux sessions", () => {
         "tmux -L ghostty-tab set-option -t =work: mouse on && ",
         "tmux -L ghostty-tab set-option -t =work: set-titles on && ",
         `tmux -L ghostty-tab set-option -t =work: set-titles-string '${REMOTE_TMUX_TITLE_FORMAT}' && `,
+        "tmux -L ghostty-tab bind-key -T copy-mode WheelUpPane 'select-pane; send-keys -X -N 1 scroll-up' && ",
+        "tmux -L ghostty-tab bind-key -T copy-mode WheelDownPane 'select-pane; send-keys -X -N 1 scroll-down' && ",
+        "tmux -L ghostty-tab bind-key -T copy-mode-vi WheelUpPane 'select-pane; send-keys -X -N 1 scroll-up' && ",
+        "tmux -L ghostty-tab bind-key -T copy-mode-vi WheelDownPane 'select-pane; send-keys -X -N 1 scroll-down' && ",
         "exec tmux -L ghostty-tab attach-session -t =work",
       ].join(""),
     );

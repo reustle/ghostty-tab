@@ -44,7 +44,9 @@ http://127.0.0.1:1036/#tmux=my-project&ssh=alice%40server.example.com
 
 Use the trackpad or mouse wheel to scroll persistent-session output history. Scrolling up
 enters tmux's history view; scroll back to the bottom or press `q` to return to the live
-prompt. Mouse scrolling is enabled for local and SSH tmux sessions when attaching.
+prompt. On each attachment, ghostty-tab enables mouse scrolling and configures one line per
+wheel event for all sessions on its dedicated tmux server, locally or over SSH. This applies
+to both tmux key modes (Emacs and vi), including existing sessions on that server.
 
 Closing that page detaches from tmux without stopping the programs inside it. Opening the
 same URL attaches to the same session again. These sessions use a dedicated tmux socket named

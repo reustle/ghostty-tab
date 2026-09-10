@@ -86,10 +86,13 @@ It uses the public `attachCustomWheelEventHandler`, `hasMouseTracking`, `getMode
 `input` APIs to report SGR wheel events through the normal input transport. It only takes
 over while SGR mouse tracking is enabled; normal shell scrollback stays with ghostty-web.
 Local and SSH tmux sessions enable `mouse on` so these events scroll tmux's own history.
+Their shared copy-mode and copy-mode-vi wheel bindings use `-N 1` because the adapter already
+converts wheel movement to rows; tmux's default `-N 5` would multiply the scroll distance.
 
 When upgrading to a release that handles mouse wheel reporting, verify scrolling up and down
 with a trackpad in local and SSH tmux sessions, then remove this adapter and its registration
-in `src/client/main.ts`. Keep the tmux mouse setting and the real scrolling regression test.
+in `src/client/main.ts`. Keep the tmux mouse setting, one-line wheel bindings, and the real
+scrolling regression test.
 
 ## Black background compatibility adapter
 
