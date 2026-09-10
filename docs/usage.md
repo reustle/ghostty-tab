@@ -58,8 +58,11 @@ palette, since ghostty-web applies its theme when the terminal opens.
 
 The bottom bar shows your session, SSH destination when applicable, and terminal dimensions.
 Select **[ rename tab ]** to give the browser tab a custom title. The title takes priority
-over shell and tmux title changes and survives reloads in that browser tab, separately for
-each session. It does not rename the tmux session or change its bookmark URL. Choose
+over shell and tmux title changes. For named tmux sessions, it is saved in this browser,
+separately for each session name and SSH destination, so reopening a bookmark restores it.
+Titles are specific to the site's address (including its port) and browser profile; clearing
+site data removes them. Temporary shell titles only survive reloads in the same tab.
+Renaming the browser tab does not rename the tmux session or change its bookmark URL. Choose
 **[ use automatic title ]** (or save an empty title) to follow terminal titles again.
 
 ## Development

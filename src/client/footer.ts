@@ -64,6 +64,7 @@ export function createTerminalFooter(terminal: FooterTerminal): {
   let sessionLabel = "";
   let customTitle = "";
   let storageKey = "";
+  let storageType: "localStorage" | "sessionStorage" = "sessionStorage";
   rename.disabled = true;
 
   function refreshTitle(): void {
@@ -81,8 +82,9 @@ export function createTerminalFooter(terminal: FooterTerminal): {
   function saveTitle(title: string): void {
     customTitle = title.trim();
     try {
-      if (customTitle) window.sessionStorage.setItem(storageKey, customTitle);
-      else window.sessionStorage.removeItem(storageKey);
+      const storage = window[storageType];
+      if (customTitle) storage.setItem(storageKey, customTitle);
+      else storage.removeItem(storageKey);
     } catch {
       // Renaming still works when browser storage is unavailable.
     }
@@ -136,8 +138,12 @@ export function createTerminalFooter(terminal: FooterTerminal): {
         : "temporary shell · local";
       label.title = label.textContent;
       storageKey = `ghostty-tab:title:${session ? formatSessionHash(session) : "temporary"}`;
+      storageType = session ? "localStorage" : "sessionStorage";
+      element(dialog, "#tab-title-hint").textContent = session
+        ? "Your title is saved for this session in this browser until you switch back to automatic."
+        : "Your title stays until you switch back to automatic.";
       try {
-        customTitle = window.sessionStorage.getItem(storageKey) ?? "";
+        customTitle = window[storageType].getItem(storageKey) ?? "";
       } catch {
         customTitle = "";
       }
