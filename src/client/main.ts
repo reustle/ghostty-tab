@@ -1,6 +1,7 @@
 import { FitAddon, Terminal, init } from "ghostty-web";
 
 import "./style.css";
+import { fixColorQueries } from "./color-queries.js";
 import { createTerminalFooter } from "./footer.js";
 import { fixBlackBackgrounds } from "./renderer.js";
 import { startTerminalSession } from "./session.js";
@@ -34,6 +35,7 @@ async function main(): Promise<void> {
   const fitAddon = new FitAddon();
   terminal.loadAddon(fitAddon);
   terminal.open(container);
+  fixColorQueries(terminal);
   if (terminal.renderer) fixBlackBackgrounds(terminal.renderer);
   const canvas = container.querySelector("canvas");
   if (!canvas) throw new Error("Terminal canvas was not created");
