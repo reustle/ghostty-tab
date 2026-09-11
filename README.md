@@ -26,6 +26,12 @@ bun run start
 
 Open [127.0.0.1:1036](http://127.0.0.1:1036) and choose a session.
 
+Use `--host` and `--port` (or `-p`) to change the bind address and port:
+
+```sh
+bun run start --host 127.0.0.1 --port 9000
+```
+
 - **Temporary shell** — gone when you disconnect.
 - **Local tmux** — close the tab, keep the session.
 - **Remote tmux** — the same, over SSH. Your SSH config works here too.

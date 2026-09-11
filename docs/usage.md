@@ -89,18 +89,25 @@ configuration; CI installs tmux so it always runs.
 ## Configuration
 
 ```text
-ghostty-tab [--port <1-65535>]
+ghostty-tab [--host <host>] [--port <1-65535>]
 
-PORT                    HTTP port (default: 1036, or 8000 in development)
-HOST                    Bind host (default: 127.0.0.1)
+Options:
+    --host <host>       Bind host (default: 127.0.0.1)
+-p, --port <port>       HTTP port (default: 1036, or 8000 in development)
+-h, --help              Show help
+
+Environment:
 GHOSTTY_ALLOWED_HOSTS   Comma-separated browser-visible hostnames
 ```
 
 For example:
 
 ```bash
-PORT=9000 bun run start
+bun run start --host 127.0.0.1 --port 9000
 ```
+
+Host and port are configured through CLI flags; `HOST` and `PORT` environment variables
+are ignored.
 
 ## Remote tmux over SSH
 

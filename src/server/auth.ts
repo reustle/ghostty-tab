@@ -258,7 +258,7 @@ export function createAuthConfig(
   } = {},
 ): AuthConfig {
   const env = options.env ?? process.env;
-  const bindHost = options.bindHost ?? env.HOST ?? "127.0.0.1";
+  const bindHost = options.bindHost ?? "127.0.0.1";
   const token = options.token ?? generateSessionToken();
   assert(bindHost.length > 0, "Bind host must be non-empty");
   assert(token.length > 0, "Auth token must be non-empty");

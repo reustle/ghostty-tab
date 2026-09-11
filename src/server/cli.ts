@@ -10,13 +10,11 @@ import { createGhosttyTabServer } from "./server.js";
 export interface CliOptions {
   dev: boolean;
   help: boolean;
+  host: string;
   port: number;
 }
 
-export function parseCliOptions(
-  argv: string[],
-  env: NodeJS.ProcessEnv = process.env,
-): CliOptions {
+export function parseCliOptions(argv: string[]): CliOptions {
   const { values } = parseArgs({
     args: argv,
     allowPositionals: false,
@@ -24,13 +22,17 @@ export function parseCliOptions(
     options: {
       dev: { type: "boolean", default: false },
       help: { type: "boolean", short: "h", default: false },
+      host: { type: "string", default: "127.0.0.1" },
       port: { type: "string", short: "p" },
     },
   });
 
   const defaultPort = values.dev ? "8000" : "1036";
-  const port = parsePort(values.port ?? env.PORT ?? defaultPort);
-  return { dev: values.dev, help: values.help, port };
+  const port = parsePort(values.port ?? defaultPort);
+  if (values.host.trim().length === 0) {
+    throw new TypeError("Host must be non-empty");
+  }
+  return { dev: values.dev, help: values.help, host: values.host, port };
 }
 
 export function parsePort(value: string): number {
@@ -48,13 +50,13 @@ export async function runCli(
   argv: string[] = process.argv.slice(2),
   env: NodeJS.ProcessEnv = process.env,
 ): Promise<void> {
-  const options = parseCliOptions(argv, env);
+  const options = parseCliOptions(argv);
   if (options.help) {
     printHelp();
     return;
   }
 
-  const authConfig = createAuthConfig({ env });
+  const authConfig = createAuthConfig({ env, bindHost: options.host });
   const server = await createGhosttyTabServer({
     port: options.port,
     dev: options.dev,
@@ -78,15 +80,14 @@ function printHelp(): void {
   console.log(`ghostty-tab
 
 Usage:
-  ghostty-tab [--port <1-65535>]
+  ghostty-tab [--host <host>] [--port <1-65535>]
 
 Options:
+      --host <host>  Bind host (default: 127.0.0.1)
   -p, --port <port>  HTTP port (default: 1036)
   -h, --help         Show this help
 
 Environment:
-  PORT                    Alternative HTTP port
-  HOST                    Bind host (default: 127.0.0.1)
   GHOSTTY_ALLOWED_HOSTS   Comma-separated browser-visible hostnames
 `);
 }

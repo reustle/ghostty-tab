@@ -78,8 +78,7 @@ export async function createGhosttyTabServer(
   const clientRoot =
     options.staticClientRoot ?? path.join(packageRoot, "dist", "client");
   const authConfig =
-    options.authConfig ??
-    createAuthConfig({ env: options.env, bindHost: options.env?.HOST });
+    options.authConfig ?? createAuthConfig({ env: options.env });
   const tmuxEnvironment = createTmuxEnvironment(options.env);
   const shutdownController = new AbortController();
   const tmuxOptions = {

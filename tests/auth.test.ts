@@ -17,6 +17,12 @@ describe("same-origin authentication", () => {
     env: {},
   });
 
+  test("ignores HOST environment variables when choosing a bind host", () => {
+    const env = { HOST: "0.0.0.0" };
+    expect(createAuthConfig({ env }).bindHost).toBe("127.0.0.1");
+    expect(createAuthConfig({ env, bindHost: "::1" }).bindHost).toBe("::1");
+  });
+
   test("parses strict host headers", () => {
     expect(parseHostHeader("localhost:8080")).toEqual({
       hostname: "localhost",
