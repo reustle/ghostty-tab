@@ -1,9 +1,10 @@
-import { afterEach, beforeEach, describe, expect, test } from "bun:test";
+import { afterEach, beforeEach, describe, expect, spyOn, test } from "bun:test";
 
-import { showSessionLauncher } from "../src/client/launcher.js";
+import { resolveSession, showSessionLauncher } from "../src/client/launcher.js";
 
 const originalFetch = globalThis.fetch;
 beforeEach(() => {
+  window.localStorage.clear();
   globalThis.fetch = (() =>
     Promise.resolve(
       new Response(JSON.stringify({ sessions: [] })),
@@ -11,6 +12,7 @@ beforeEach(() => {
 });
 afterEach(() => {
   globalThis.fetch = originalFetch;
+  window.localStorage.clear();
   window.history.replaceState(null, "", "/");
   document.body.replaceChildren();
 });
@@ -189,14 +191,169 @@ describe("session launcher", () => {
       "user@hostname",
     );
 
-    sshInput.value = "dev@prod";
+    sshInput.value = "  dev@prod  ";
     form.requestSubmit();
     expect(await choice).toEqual({
       name: "deploy",
       target: { kind: "ssh", sshTarget: "dev@prod" },
     });
+
+    const reopened = showSessionLauncher();
+    expect(element<HTMLInputElement>('input[value="ssh"]').checked).toBe(true);
+    expect(element<HTMLInputElement>("#ssh-target-input").value).toBe(
+      "dev@prod",
+    );
+    expect(element<HTMLInputElement>("#ssh-target-input").disabled).toBe(false);
+    expect(element<HTMLInputElement>("#session-name-input").value).toBe("");
+    expect(element<HTMLButtonElement>('[type="submit"]').textContent).toContain(
+      "Connect over SSH",
+    );
+    openTemporaryShell();
+    await reopened;
+  });
+
+  test.each(["local", "temporary", "ssh"])(
+    "remembers the %s selection and SSH destination before submitting",
+    async (mode) => {
+      void showSessionLauncher();
+      selectMode("ssh");
+      const sshInput = element<HTMLInputElement>("#ssh-target-input");
+      sshInput.value = "  dev@prod  ";
+      sshInput.dispatchEvent(new Event("input"));
+      selectMode(mode);
+      document.body.replaceChildren(); // Leave the launcher without submitting.
+      window.sessionStorage.clear(); // A new tab has fresh session storage.
+
+      const reopened = resolveSession();
+      expect(element<HTMLInputElement>(`input[value="${mode}"]`).checked).toBe(
+        true,
+      );
+      expect(element<HTMLInputElement>("#ssh-target-input").value).toBe(
+        "dev@prod",
+      );
+      if (mode === "temporary") {
+        expect(document.activeElement).toBe(element('[type="submit"]'));
+      }
+      selectMode("ssh");
+      expect(element<HTMLInputElement>("#ssh-target-input").value).toBe(
+        "dev@prod",
+      );
+      openTemporaryShell();
+      await reopened;
+    },
+  );
+
+  test("keeps the last valid SSH destination unless the user clears it", async () => {
+    void showSessionLauncher();
+    selectMode("ssh");
+    const sshInput = element<HTMLInputElement>("#ssh-target-input");
+    for (const value of ["dev@prod", "-oProxyCommand=bad"]) {
+      sshInput.value = value;
+      sshInput.dispatchEvent(new Event("input"));
+    }
+    document.body.replaceChildren();
+
+    void showSessionLauncher();
+    const restoredInput = element<HTMLInputElement>("#ssh-target-input");
+    expect(restoredInput.value).toBe("dev@prod");
+    restoredInput.value = "";
+    restoredInput.dispatchEvent(new Event("input"));
+    document.body.replaceChildren();
+
+    const reopened = showSessionLauncher();
+    expect(element<HTMLInputElement>("#ssh-target-input").value).toBe("");
+    openTemporaryShell();
+    await reopened;
+  });
+
+  test.each([
+    { hash: "#tmux=bad/name", mode: "local", sshTarget: "" },
+    {
+      hash: "#tmux=bad/name&ssh=other%40host",
+      mode: "ssh",
+      sshTarget: "other@host",
+    },
+  ])(
+    "prefers explicit URL values over saved preferences: $hash",
+    async ({ hash, mode, sshTarget }) => {
+      window.localStorage.setItem(
+        "ghostty-tab:launcher",
+        JSON.stringify({ mode: "ssh", sshTarget: "dev@prod" }),
+      );
+      window.history.replaceState(null, "", hash);
+      const choice = resolveSession();
+      expect(element<HTMLInputElement>(`input[value="${mode}"]`).checked).toBe(
+        true,
+      );
+      expect(element<HTMLInputElement>("#session-name-input").value).toBe(
+        "bad-name",
+      );
+      expect(element<HTMLInputElement>("#ssh-target-input").value).toBe(
+        sshTarget,
+      );
+      element<HTMLFormElement>("form").requestSubmit();
+      expect(await choice).toEqual({
+        name: "bad-name",
+        target: mode === "ssh" ? { kind: "ssh", sshTarget } : { kind: "local" },
+      });
+    },
+  );
+
+  test.each([
+    "not json",
+    "null",
+    JSON.stringify({ mode: "unknown", sshTarget: 123 }),
+    JSON.stringify({ mode: "local", sshTarget: "-oProxyCommand=bad" }),
+  ])("falls back safely for invalid saved preferences: %s", async (saved) => {
+    window.localStorage.setItem("ghostty-tab:launcher", saved);
+    const choice = showSessionLauncher();
+    expect(element<HTMLInputElement>('input[value="local"]').checked).toBe(
+      true,
+    );
+    expect(element<HTMLInputElement>("#ssh-target-input").value).toBe("");
+    openTemporaryShell();
+    await choice;
+  });
+
+  test("still opens sessions when browser storage cannot be read or written", async () => {
+    const read = spyOn(window.localStorage, "getItem").mockImplementation(
+      () => {
+        throw new Error("Storage unavailable");
+      },
+    );
+    const write = spyOn(window.localStorage, "setItem").mockImplementation(
+      () => {
+        throw new Error("Storage unavailable");
+      },
+    );
+    try {
+      const choice = showSessionLauncher();
+      selectMode("ssh");
+      element<HTMLInputElement>("#session-name-input").value = "deploy";
+      element<HTMLInputElement>("#ssh-target-input").value = "dev@prod";
+      element<HTMLFormElement>("form").requestSubmit();
+      expect(await choice).toEqual({
+        name: "deploy",
+        target: { kind: "ssh", sshTarget: "dev@prod" },
+      });
+    } finally {
+      read.mockRestore();
+      write.mockRestore();
+    }
   });
 });
+
+function element<T extends HTMLElement>(selector: string): T {
+  const result = document.querySelector<T>(selector);
+  if (!result) throw new Error(`Missing launcher element: ${selector}`);
+  return result;
+}
+
+function selectMode(mode: string): void {
+  const radio = element<HTMLInputElement>(`input[value="${mode}"]`);
+  radio.checked = true;
+  radio.dispatchEvent(new Event("change"));
+}
 
 async function waitFor(predicate: () => boolean): Promise<void> {
   const deadline = Date.now() + 1000;

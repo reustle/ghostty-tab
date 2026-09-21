@@ -10,6 +10,31 @@ import {
 } from "../shared/session.js";
 import { closeExistingSession, fetchExistingSessions } from "./api.js";
 
+const LAUNCHER_PREFERENCES_KEY = "ghostty-tab:launcher";
+
+interface LauncherPreferences {
+  mode: "temporary" | "local" | "ssh";
+  sshTarget: string;
+}
+
+function readLauncherPreferences(): LauncherPreferences {
+  try {
+    const saved: unknown = JSON.parse(
+      window.localStorage.getItem(LAUNCHER_PREFERENCES_KEY) ?? "null",
+    );
+    if (saved && typeof saved === "object") {
+      const { mode, sshTarget } = saved as Record<string, unknown>;
+      return {
+        mode: mode === "temporary" || mode === "ssh" ? mode : "local",
+        sshTarget: isValidSshTarget(sshTarget) ? sshTarget : "",
+      };
+    }
+  } catch {
+    // Missing or unavailable browser storage leaves the default choices intact.
+  }
+  return { mode: "local", sshTarget: "" };
+}
+
 export async function resolveSession(): Promise<PersistentSession | null> {
   const parsed = parseSessionHash(window.location.hash);
   if (parsed.ok) return parsed.session;
@@ -18,7 +43,9 @@ export async function resolveSession(): Promise<PersistentSession | null> {
       ? "Choose a session"
       : "The URL has an invalid session",
     suggestSessionNameFromHash(window.location.hash),
-    suggestSshTargetFromHash(window.location.hash),
+    parsed.reason === "missing"
+      ? undefined
+      : suggestSshTargetFromHash(window.location.hash),
   );
   if (session)
     window.history.replaceState(null, "", formatSessionHash(session));
@@ -28,9 +55,16 @@ export async function resolveSession(): Promise<PersistentSession | null> {
 export function showSessionLauncher(
   heading = "Choose a session",
   initialName = "",
-  initialSshTarget = "",
+  initialSshTarget?: string,
 ): Promise<PersistentSession | null> {
   return new Promise((resolve) => {
+    const preferences = readLauncherPreferences();
+    const mode =
+      initialSshTarget === undefined
+        ? preferences.mode
+        : initialSshTarget
+          ? "ssh"
+          : "local";
     const dialog = document.createElement("dialog");
     dialog.className = "session-dialog";
     dialog.setAttribute("aria-labelledby", "session-heading");
@@ -111,9 +145,10 @@ export function showSessionLauncher(
     const refresh = element<HTMLButtonElement>(".refresh-sessions");
     element("#session-heading").textContent = heading;
     input.value = initialName;
-    sshInput.value = initialSshTarget;
-    local.checked = initialSshTarget.length === 0;
-    remote.checked = initialSshTarget.length > 0;
+    sshInput.value = initialSshTarget ?? preferences.sshTarget;
+    local.checked = mode === "local";
+    remote.checked = mode === "ssh";
+    temporary.checked = mode === "temporary";
 
     let sessions: string[] = [];
     let confirming: string | null = null;
@@ -125,6 +160,24 @@ export function showSessionLauncher(
       dialog.close();
       dialog.remove();
       resolve(session);
+    }
+    function savePreferences() {
+      preferences.mode = temporary.checked
+        ? "temporary"
+        : remote.checked
+          ? "ssh"
+          : "local";
+      const sshTarget = sshInput.value.trim();
+      if (!sshTarget || isValidSshTarget(sshTarget))
+        preferences.sshTarget = sshTarget;
+      try {
+        window.localStorage.setItem(
+          LAUNCHER_PREFERENCES_KEY,
+          JSON.stringify(preferences),
+        );
+      } catch {
+        // Choosing a session still works when browser storage is unavailable.
+      }
     }
     function updateMode() {
       element(".persistent-fields").hidden = temporary.checked;
@@ -145,12 +198,17 @@ export function showSessionLauncher(
       error.textContent = "";
     }
     for (const radio of [temporary, local, remote])
-      radio.addEventListener("change", updateMode);
+      radio.addEventListener("change", () => {
+        updateMode();
+        savePreferences();
+      });
+    sshInput.addEventListener("input", savePreferences);
     updateMode();
 
     form.addEventListener("submit", (event) => {
       event.preventDefault();
       if (temporary.checked) {
+        savePreferences();
         finish(null);
         return;
       }
@@ -168,6 +226,7 @@ export function showSessionLauncher(
         sshInput.focus();
         return;
       }
+      savePreferences();
       finish({
         name,
         target: remote.checked ? { kind: "ssh", sshTarget } : { kind: "local" },
@@ -335,8 +394,11 @@ export function showSessionLauncher(
     });
     document.body.append(dialog);
     dialog.showModal();
-    input.focus();
-    input.select();
+    if (temporary.checked) submit.focus();
+    else {
+      input.focus();
+      input.select();
+    }
     void refreshSessions();
   });
 }

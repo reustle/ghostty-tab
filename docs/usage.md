@@ -42,6 +42,11 @@ http://127.0.0.1:1036/#tmux=my-project
 http://127.0.0.1:1036/#tmux=my-project&ssh=alice%40server.example.com
 ```
 
+The launcher remembers your selected session type and SSH destination in this browser,
+including across tabs and restarts. New sessions still start with a blank session name;
+values in a session URL take precedence. These preferences are specific to the site's
+address (including its port) and browser profile. Clearing site data removes them.
+
 Use the trackpad or mouse wheel to scroll persistent-session output history. Scrolling up
 enters tmux's history view; scroll back to the bottom or press `q` to return to the live
 prompt. On each attachment, ghostty-tab enables mouse scrolling and configures one line per
