@@ -6,15 +6,16 @@ import { promisify } from "node:util";
 const exec = promisify(execFile);
 const hasTmux = process.platform !== "win32" && Boolean(Bun.which("tmux"));
 
-test.skipIf(!hasTmux)(
-  "real tmux survives detach and server restart under Node",
-  async () => {
+test.skipIf(!hasTmux).each(["local", "remote"])(
+  "real tmux survives detach, restart and shell exit under Node (%s)",
+  async (mode) => {
     const result = await exec(
       "node",
       [
         "--import",
         "tsx",
         fileURLToPath(new URL("./fixtures/tmux-smoke.ts", import.meta.url)),
+        mode,
       ],
       {
         cwd: fileURLToPath(new URL("..", import.meta.url)),

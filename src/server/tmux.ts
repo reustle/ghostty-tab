@@ -9,6 +9,8 @@ export const REMOTE_TMUX_TITLE_FORMAT =
 const TMUX_EXECUTABLE = "tmux";
 const TMUX_SESSION_OPTIONS = [
   ["destroy-unattached", "off"],
+  // A bookmarked tab must close instead of switching to an unrelated session.
+  ["detach-on-destroy", "on"],
   ["mouse", "on"],
   ["set-titles", "on"],
   ["set-titles-string", LOCAL_TMUX_TITLE_FORMAT],
@@ -102,6 +104,7 @@ export function buildRemoteTmuxCommand(
   const create = `tmux -L ${TMUX_SOCKET_NAME} new-session -d -s ${sessionName} -x ${cols} -y ${rows} 2>/dev/null || true`;
   const configure = [
     `tmux -L ${TMUX_SOCKET_NAME} set-option -t ${exactTarget}: destroy-unattached off`,
+    `tmux -L ${TMUX_SOCKET_NAME} set-option -t ${exactTarget}: detach-on-destroy on`,
     `tmux -L ${TMUX_SOCKET_NAME} set-option -t ${exactTarget}: mouse on`,
     `tmux -L ${TMUX_SOCKET_NAME} set-option -t ${exactTarget}: set-titles on`,
     `tmux -L ${TMUX_SOCKET_NAME} set-option -t ${exactTarget}: set-titles-string '${REMOTE_TMUX_TITLE_FORMAT}'`,

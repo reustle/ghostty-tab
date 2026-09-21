@@ -5,6 +5,7 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
 
+import pty from "@lydell/node-pty";
 import WebSocket from "ws";
 
 import { createAuthConfig } from "../../src/server/auth.js";
@@ -21,6 +22,7 @@ import { encodeInputMessage } from "../../src/shared/protocol.js";
 import { SESSION_CLOSE_CODES } from "../../src/shared/session.js";
 
 const exec = promisify(execFile);
+const remote = process.argv[2] === "remote";
 // Keep the Unix socket path below macOS's length limit.
 const directory = await mkdtemp("/tmp/gt-smoke-");
 const env = createTmuxEnvironment({
@@ -43,13 +45,23 @@ async function startServer() {
   return createGhosttyTabServer({
     port: 0,
     env,
+    ptySpawn: remote
+      ? (command, args, options) => {
+          assert.equal(command, "ssh");
+          assert.ok(Array.isArray(args));
+          assert.deepEqual(args.slice(0, 2), ["-tt", "fixture-host"]);
+          // Execute the real remote command on the isolated tmux server without
+          // requiring an SSH daemon or touching a user's remote machine.
+          return pty.spawn("/bin/sh", ["-c", args[2]], options);
+        }
+      : undefined,
     authConfig: createAuthConfig({ token: "smoke-token", env: {} }),
     staticClientRoot: fileURLToPath(new URL("./client", import.meta.url)),
   });
 }
 function connect(activeServer: GhosttyTabServer) {
   const socket = new WebSocket(
-    `${activeServer.url.replace("http:", "ws:")}/ws?token=smoke-token&session=work`,
+    `${activeServer.url.replace("http:", "ws:")}/ws?token=smoke-token&session=work${remote ? "&ssh=fixture-host" : ""}`,
     {
       headers: { Origin: activeServer.url },
     },
@@ -88,6 +100,8 @@ try {
     "fixture",
     "/bin/sh",
   );
+  // A user's config may select another session when the current one ends.
+  await tmux("set-option", "-g", "detach-on-destroy", "off");
   server = await startServer();
   const first = connect(server);
   await first.opened;
@@ -145,6 +159,8 @@ try {
   await first.closed;
   await waitFor(async () => (await tmux("list-clients", "-t", "=work")) === "");
   assert.equal(await tmuxSessionExists("work", { env }), true);
+  // Reattaching must also correct an existing session's option.
+  await tmux("set-option", "-t", "=work:", "detach-on-destroy", "off");
 
   const second = connect(server);
   await second.opened;
@@ -172,8 +188,24 @@ try {
     originalPid,
   );
   third.socket.send(encodeInputMessage("exit\r"));
-  assert.equal(await third.closed, SESSION_CLOSE_CODES.SESSION_ENDED);
+  await waitFor(
+    async () =>
+      third.socket.readyState === WebSocket.CLOSED ||
+      (await tmux("list-clients", "-t", "=fixture")) !== "",
+  );
+  assert.equal(
+    await tmux("list-clients", "-t", "=fixture"),
+    "",
+    "Exiting work must not switch the client to the unrelated fixture session",
+  );
+  assert.equal(
+    await third.closed,
+    remote
+      ? SESSION_CLOSE_CODES.SESSION_DETACHED
+      : SESSION_CLOSE_CODES.SESSION_ENDED,
+  );
   assert.equal(await tmuxSessionExists("work", { env }), false);
+  assert.equal(await tmuxSessionExists("fixture", { env }), true);
   console.log("tmux detach, reattach, server restart and shell exit passed");
 } finally {
   for (const socket of sockets) socket.terminate();
