@@ -88,7 +88,13 @@ export function buildTmuxCreateArgs(
 }
 
 export function buildTmuxAttachArgs(sessionName: string): string[] {
-  return withSocket(["attach-session", "-t", exactTmuxTarget(sessionName)]);
+  // The browser supports UTF-8 even when the local or SSH locale says otherwise.
+  return withSocket([
+    "-u",
+    "attach-session",
+    "-t",
+    exactTmuxTarget(sessionName),
+  ]);
 }
 
 export function buildRemoteTmuxCommand(
@@ -115,7 +121,7 @@ export function buildRemoteTmuxCommand(
       ),
     ),
   ].join(" && ");
-  const attach = `exec tmux -L ${TMUX_SOCKET_NAME} attach-session -t ${exactTarget}`;
+  const attach = `exec tmux ${buildTmuxAttachArgs(sessionName).join(" ")}`;
   return `${create}; ${configure} && ${attach}`;
 }
 

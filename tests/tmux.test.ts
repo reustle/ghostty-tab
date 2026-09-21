@@ -27,6 +27,7 @@ describe("isolated tmux sessions", () => {
     expect(buildTmuxAttachArgs("work")).toEqual([
       "-L",
       TMUX_SOCKET_NAME,
+      "-u",
       "attach-session",
       "-t",
       "=work",
@@ -163,7 +164,7 @@ describe("isolated tmux sessions", () => {
         "tmux -L ghostty-tab bind-key -T copy-mode WheelDownPane 'select-pane; send-keys -X -N 1 scroll-down' && ",
         "tmux -L ghostty-tab bind-key -T copy-mode-vi WheelUpPane 'select-pane; send-keys -X -N 1 scroll-up' && ",
         "tmux -L ghostty-tab bind-key -T copy-mode-vi WheelDownPane 'select-pane; send-keys -X -N 1 scroll-down' && ",
-        "exec tmux -L ghostty-tab attach-session -t =work",
+        "exec tmux -L ghostty-tab -u attach-session -t =work",
       ].join(""),
     );
     expect(buildSshTmuxArgs("dev@prod", "work", 100, 30)).toEqual([

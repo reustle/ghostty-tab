@@ -29,6 +29,10 @@ const env = createTmuxEnvironment({
   ...process.env,
   TMUX_TMPDIR: directory,
   SHELL: "/bin/sh",
+  // SSH hosts may not receive a UTF-8 locale. The browser still supports UTF-8.
+  LANG: "C",
+  LC_ALL: "C",
+  LC_CTYPE: "C",
 });
 let server: GhosttyTabServer | undefined;
 const sockets: WebSocket[] = [];
@@ -89,6 +93,16 @@ async function waitFor(predicate: () => boolean | Promise<boolean>) {
   }
 }
 
+async function expectUnicodeOutput(connection: ReturnType<typeof connect>) {
+  const sample = "straight=' curly=’ arrows=←→ dash=— bullet=• box=┌─┐";
+  // Send ASCII escapes so echoed input cannot satisfy the output assertion.
+  const escaped = [...Buffer.from(sample)]
+    .map((byte) => `\\0${byte.toString(8).padStart(3, "0")}`)
+    .join("");
+  connection.socket.send(encodeInputMessage(`printf '%b\\n' '${escaped}'\r`));
+  await waitFor(() => connection.output().includes(sample));
+}
+
 try {
   // Seed only the isolated test server, explicitly ignoring the user's tmux config.
   await tmux(
@@ -111,6 +125,7 @@ try {
     ),
   );
   await waitFor(() => first.output().includes("__GT_ready__"));
+  await expectUnicodeOutput(first);
   assert.equal(await tmux("show-options", "-v", "-t", "=work:", "mouse"), "on");
   first.socket.send(
     encodeInputMessage(
@@ -168,6 +183,7 @@ try {
     encodeInputMessage("printf '__GT_%s__\\n' \"$GHOSTTY_TEST_VALUE\"\r"),
   );
   await waitFor(() => second.output().includes("__GT_survived__"));
+  await expectUnicodeOutput(second);
   assert.equal(
     await tmux("display-message", "-p", "-t", "=work:", "#{pane_pid}"),
     originalPid,
@@ -183,6 +199,7 @@ try {
     encodeInputMessage("printf '__GT_%s__\\n' \"$GHOSTTY_TEST_VALUE\"\r"),
   );
   await waitFor(() => third.output().includes("__GT_survived__"));
+  await expectUnicodeOutput(third);
   assert.equal(
     await tmux("display-message", "-p", "-t", "=work:", "#{pane_pid}"),
     originalPid,
@@ -206,7 +223,9 @@ try {
   );
   assert.equal(await tmuxSessionExists("work", { env }), false);
   assert.equal(await tmuxSessionExists("fixture", { env }), true);
-  console.log("tmux detach, reattach, server restart and shell exit passed");
+  console.log(
+    "tmux Unicode, detach, reattach, server restart and shell exit passed",
+  );
 } finally {
   for (const socket of sockets) socket.terminate();
   await server?.shutdown();
