@@ -18,6 +18,29 @@ afterEach(() => {
 });
 
 describe("session launcher", () => {
+  test("prefills a new launcher from saved preferences while leaving the session name blank", async () => {
+    const saved = JSON.stringify({ mode: "ssh", sshTarget: "dev@prod" });
+    window.localStorage.setItem("ghostty-tab:launcher", saved);
+    window.history.replaceState(null, "", "/");
+    const choice = resolveSession();
+    expect(window.location.hash).toBe("");
+    expect(element("#session-heading").textContent).toBe("Choose a session");
+    expect(element<HTMLInputElement>('input[value="ssh"]').checked).toBe(true);
+    expect(element<HTMLInputElement>("#session-name-input").value).toBe("");
+    expect(element<HTMLInputElement>("#ssh-target-input").value).toBe(
+      "dev@prod",
+    );
+    expect(window.localStorage.getItem("ghostty-tab:launcher")).toBe(saved);
+
+    element<HTMLInputElement>("#session-name-input").value = "work";
+    element<HTMLFormElement>("form").requestSubmit();
+    expect(await choice).toEqual({
+      name: "work",
+      target: { kind: "ssh", sshTarget: "dev@prod" },
+    });
+    expect(window.location.hash).toBe("#ssh=dev%40prod&tmux=work");
+  });
+
   test("connects to an existing local session from the visible list", async () => {
     globalThis.fetch = (() =>
       Promise.resolve(

@@ -39,7 +39,7 @@ inside it. Persistent sessions get bookmarkable URLs:
 
 ```text
 http://127.0.0.1:1036/#tmux=my-project
-http://127.0.0.1:1036/#tmux=my-project&ssh=alice%40server.example.com
+http://127.0.0.1:1036/#ssh=alice%40server.example.com&tmux=my-project
 ```
 
 The launcher remembers your selected session type and SSH destination in this browser,
@@ -61,7 +61,10 @@ The launcher and terminal follow your browser's light or dark preference. The la
 updates immediately when that preference changes; reopen the tab to apply a new terminal
 palette, since ghostty-web applies its theme when the terminal opens.
 
-The bottom bar shows your session, SSH destination when applicable, and terminal dimensions.
+The bottom bar shows your session and SSH destination when applicable.
+Select **[ new tab ]** to open the launcher in a separate browser tab with your remembered
+session type and SSH destination. The session name starts blank, and the current session
+and custom tab title are not carried over.
 Select **[ rename tab ]** to give the browser tab a custom title. The title takes priority
 over shell and tmux title changes. For named tmux sessions, it is saved in this browser,
 separately for each session name and SSH destination, so reopening a bookmark restores it.

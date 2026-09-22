@@ -1,18 +1,19 @@
 import type { IDisposable } from "ghostty-web";
 
-import {
-  type PersistentSession,
-  formatSessionHash,
-} from "../shared/session.js";
+import type { PersistentSession } from "../shared/session.js";
 
 interface FooterTerminal {
-  cols: number;
-  rows: number;
   focus(): void;
   onTitleChange(listener: (title: string) => void): IDisposable;
-  onResize(
-    listener: (size: { cols: number; rows: number }) => void,
-  ): IDisposable;
+}
+
+function titleStorageKey(session: PersistentSession | null): string {
+  if (!session) return "ghostty-tab:title:temporary";
+  // Keep existing title keys stable when the bookmark URL format changes.
+  const params = new URLSearchParams({ tmux: session.name });
+  if (session.target.kind === "ssh")
+    params.set("ssh", session.target.sshTarget);
+  return `ghostty-tab:title:#${params}`;
 }
 
 export function createTerminalFooter(terminal: FooterTerminal): {
@@ -25,7 +26,7 @@ export function createTerminalFooter(terminal: FooterTerminal): {
   footer.innerHTML = `
     <span class="terminal-footer-brand">ghostty-tab</span>
     <span class="terminal-footer-session">Choose a session</span>
-    <span class="terminal-footer-size" aria-label="Terminal dimensions"></span>
+    <a class="new-tab" target="_blank" rel="noopener">[ new tab ]</a>
     <button type="button" class="rename-tab">[ rename tab ]</button>
   `;
   const dialog = document.createElement("dialog");
@@ -57,7 +58,8 @@ export function createTerminalFooter(terminal: FooterTerminal): {
     return result;
   }
   const label = element(footer, ".terminal-footer-session");
-  const size = element(footer, ".terminal-footer-size");
+  element<HTMLAnchorElement>(footer, ".new-tab").href =
+    window.location.pathname;
   const rename = element<HTMLButtonElement>(footer, ".rename-tab");
   const input = element<HTMLInputElement>(dialog, "input");
   let latestTerminalTitle = "";
@@ -113,11 +115,6 @@ export function createTerminalFooter(terminal: FooterTerminal): {
     closeDialog();
   });
 
-  function updateSize({ cols, rows }: { cols: number; rows: number }): void {
-    size.textContent = `${cols}×${rows}`;
-  }
-  updateSize(terminal);
-  const resizeSubscription = terminal.onResize(updateSize);
   const titleSubscription = terminal.onTitleChange((title) => {
     latestTerminalTitle = title.trim();
     refreshTitle();
@@ -137,7 +134,7 @@ export function createTerminalFooter(terminal: FooterTerminal): {
           : `tmux: ${session.name} · local`
         : "temporary shell · local";
       label.title = label.textContent;
-      storageKey = `ghostty-tab:title:${session ? formatSessionHash(session) : "temporary"}`;
+      storageKey = titleStorageKey(session);
       storageType = session ? "localStorage" : "sessionStorage";
       element(dialog, "#tab-title-hint").textContent = session
         ? "Your title is saved for this session in this browser until you switch back to automatic."
@@ -151,7 +148,6 @@ export function createTerminalFooter(terminal: FooterTerminal): {
       refreshTitle();
     },
     dispose() {
-      resizeSubscription.dispose();
       titleSubscription.dispose();
       dialog.remove();
       footer.remove();

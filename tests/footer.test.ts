@@ -8,9 +8,46 @@ afterEach(() => {
   window.sessionStorage.clear();
   document.body.replaceChildren();
   document.title = "";
+  window.history.replaceState(null, "", "/");
 });
 
 describe("browser tab titles", () => {
+  test("links to a fresh launcher in a separate tab without inheriting the current session", () => {
+    window.history.replaceState(
+      null,
+      "",
+      "/?title=Project#ssh=dev%40prod&tmux=work",
+    );
+    const footer = openFooter("#ssh=dev%40prod&tmux=work");
+    renameTab("Project work");
+
+    const link = element<HTMLAnchorElement>(".new-tab");
+    expect(new URL(link.href).pathname).toBe("/");
+    expect(new URL(link.href).search).toBe("");
+    expect(new URL(link.href).hash).toBe("");
+    expect(link.target).toBe("_blank");
+    expect(link.relList.contains("noopener")).toBe(true);
+    expect(link.nextElementSibling).toBe(element(".rename-tab"));
+    expect(document.querySelector(".terminal-footer-size")).toBeNull();
+    expect(document.title).toBe("Project work");
+    footer.dispose();
+  });
+
+  test("preserves saved titles across both SSH bookmark parameter orders", () => {
+    window.localStorage.setItem(
+      "ghostty-tab:title:#tmux=work&ssh=dev%40prod",
+      "Project work",
+    );
+    const reordered = openFooter("#ssh=dev%40prod&tmux=work");
+    expect(document.title).toBe("Project work");
+    renameTab("Updated title");
+    reordered.dispose();
+
+    const original = openFooter("#tmux=work&ssh=dev%40prod");
+    expect(document.title).toBe("Updated title");
+    original.dispose();
+  });
+
   test.each(["#tmux=work", "#tmux=work&ssh=dev%40prod"])(
     "restores a custom title when reopening bookmark %s in a new tab",
     (hash) => {
@@ -91,14 +128,9 @@ describe("browser tab titles", () => {
 function openFooter(hash = "") {
   let emitTitle = (_title: string) => {};
   const footer = createTerminalFooter({
-    cols: 80,
-    rows: 24,
     focus() {},
     onTitleChange(listener) {
       emitTitle = listener;
-      return { dispose() {} };
-    },
-    onResize() {
       return { dispose() {} };
     },
   });

@@ -100,10 +100,11 @@ export function formatSessionHash(session: PersistentSession): string {
     throw new TypeError("Invalid SSH target");
   }
 
-  const params = new URLSearchParams({ tmux: session.name });
+  const params = new URLSearchParams();
   if (session.target.kind === "ssh") {
     params.set("ssh", session.target.sshTarget);
   }
+  params.set("tmux", session.name);
   return `#${params}`;
 }
 

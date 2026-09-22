@@ -34,12 +34,18 @@ describe("session identifiers", () => {
       target: { kind: "ssh" as const, sshTarget: "dev@prod.example.com" },
     };
     expect(formatSessionHash(session)).toBe(
-      "#tmux=deploy&ssh=dev%40prod.example.com",
+      "#ssh=dev%40prod.example.com&tmux=deploy",
     );
     expect(parseSessionHash(formatSessionHash(session))).toEqual({
       ok: true,
       session,
     });
+    expect(parseSessionHash("#tmux=deploy&ssh=dev%40prod.example.com")).toEqual(
+      {
+        ok: true,
+        session,
+      },
+    );
     expect(parseSessionHash("#tmux-legacy")).toEqual({
       ok: true,
       session: { name: "legacy", target: { kind: "local" } },
