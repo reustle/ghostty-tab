@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, spyOn, test } from "bun:test";
-import { Ghostty } from "ghostty-web";
+import { Ghostty, Terminal } from "ghostty-web";
 
-import { getTerminalTheme } from "../src/client/theme.js";
+import { followSystemTheme, getTerminalTheme } from "../src/client/theme.js";
 
 const originalMatchMedia = window.matchMedia;
 
@@ -18,7 +18,7 @@ describe("terminal color scheme", () => {
     const theme = getTerminalTheme();
     expect(matchMedia).toHaveBeenCalledWith("(prefers-color-scheme: light)");
     expect(theme.background).toBe("#ffffff");
-    expect(theme.foreground).toBe("#010101");
+    expect(theme.foreground).toBe("#000000");
     expect(theme.cursor).toBe("#7f7f7f");
     expect(theme.selectionForeground).not.toBe(theme.selectionBackground);
   });
@@ -49,11 +49,11 @@ describe("terminal color scheme", () => {
       expect(
         cells.slice(0, 6).map((cell) => [cell.fg_r, cell.fg_g, cell.fg_b]),
       ).toEqual([
-        [1, 1, 1],
+        [0, 0, 0],
         [153, 0, 0],
-        [1, 1, 1],
-        [1, 1, 1],
-        [1, 1, 1],
+        [0, 0, 0],
+        [0, 0, 0],
+        [0, 0, 0],
         [212, 212, 212],
       ]);
       expect([cells[0].bg_r, cells[0].bg_g, cells[0].bg_b]).toEqual([
@@ -83,5 +83,51 @@ describe("terminal color scheme", () => {
 
     matchMedia.mockReturnValue({ matches: true } as MediaQueryList);
     expect(getTerminalTheme().background).toBe("#ffffff");
+  });
+
+  test("updates the live WASM theme and reported color scheme, then unsubscribes", async () => {
+    const preference = Object.assign(new EventTarget(), { matches: true });
+    spyOn(window, "matchMedia").mockReturnValue(preference as MediaQueryList);
+    const ghostty = await Ghostty.load(
+      import.meta.resolve("ghostty-web/ghostty-vt.wasm").replace("file://", ""),
+    );
+    const terminal = new Terminal({ ghostty });
+    const stop = followSystemTheme(terminal);
+    const internals = terminal as unknown as {
+      isOpen: boolean;
+      buildWasmConfig(): Parameters<Ghostty["createTerminal"]>[2];
+    };
+    terminal.wasmTerm = ghostty.createTerminal(
+      80,
+      24,
+      internals.buildWasmConfig(),
+    );
+    terminal.wasmTerm.setColorScheme(terminal.options.colorScheme);
+    terminal.renderer = { setTheme() {}, render() {}, dispose() {} } as never;
+    internals.isOpen = true;
+    const replies: string[] = [];
+    terminal.onData((data) => replies.push(data));
+    try {
+      terminal.write("\x1b[?996n");
+      expect(replies.join("")).toBe("\x1b[?997;2n");
+      preference.matches = false;
+      preference.dispatchEvent(new Event("change"));
+      terminal.wasmTerm.update();
+      expect(terminal.wasmTerm.getColors().background).toEqual({
+        r: 30,
+        g: 30,
+        b: 30,
+      });
+      replies.length = 0;
+      terminal.write("\x1b[?996n");
+      expect(replies.join("")).toBe("\x1b[?997;1n");
+      stop();
+      preference.matches = true;
+      preference.dispatchEvent(new Event("change"));
+      expect(terminal.options.colorScheme).toBe("dark");
+    } finally {
+      stop();
+      terminal.dispose();
+    }
   });
 });

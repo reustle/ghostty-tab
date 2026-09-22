@@ -45,7 +45,7 @@
   "license": "MIT",
   "dependencies": {
     "@lydell/node-pty": "^1.0.1",
-    "ghostty-web": "0.4.0",
+    "ghostty-web": "github:anomalyco/ghostty-web#6e24d040458ddd7aae81572fe2901deec32f9fe7",
     "ws": "^8.18.0"
   },
   "devDependencies": {

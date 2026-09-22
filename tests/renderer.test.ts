@@ -29,11 +29,14 @@ function paintBackground(
     const renderer = Object.assign(Object.create(CanvasRenderer.prototype), {
       ctx: {
         fillStyle: "",
+        save() {},
+        restore() {},
+        setTransform() {},
         fillRect(...rect: number[]) {
           paints.push({ color: this.fillStyle, rect });
         },
       },
-      metrics: { width: 10, height: 20 },
+      deviceMetrics: { width: 10, height: 20 },
       theme: { selectionBackground: "#cbd4bf" },
       currentSelectionCoords: selected
         ? { startCol: 0, startRow: 0, endCol: 0, endRow: 0 }
@@ -42,9 +45,9 @@ function paintBackground(
     fixBlackBackgrounds(renderer);
     // Access the pinned renderer's private method without mocking its behavior.
     const internal = renderer as unknown as {
-      renderCellBackground(cell: GhosttyCell, x: number, y: number): void;
+      renderCellBackgrounds(line: GhosttyCell[], y: number): void;
     };
-    internal.renderCellBackground(cell, 0, 0);
+    internal.renderCellBackgrounds([cell], 0);
     return paints.at(-1);
   } finally {
     terminal.free();
