@@ -38,12 +38,13 @@ still says 0.3.0; the Git SHA identifies the actual code. Review source and arti
 ## Color-query compatibility adapter
 
 Anomaly's `Terminal.processColorQueries` uses a regex observer that can answer with stale
-render-state colors, misses combined OSC 10/11 queries, and matches query-looking text
-inside unrelated terminal control strings. Adding another responder would duplicate replies.
+render-state colors, misses combined OSC 10/11 queries, and mistakes UTF-8 encoded C1
+characters for control bytes. Adding another responder would duplicate replies.
 
 `src/client/color-queries.ts` replaces that private hook. Its bounded parser carries state
 across string and byte writes, supports combined queries and BEL/ST terminators, ignores
-other control-string payloads, and resets on terminal reset. It calls `wasmTerm.update()`
+other control-string payloads, recognizes ESC interruptions like Ghostty, and resets on
+terminal reset. It calls `wasmTerm.update()`
 before reading `getColors()` and sends replies through the existing input/WebSocket/PTY path.
 It observes 7-bit control sequences in UTF-8; it does not treat raw C1 bytes as controls.
 The newer WASM supports OSC default-color changes, which replies now reflect.
