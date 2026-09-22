@@ -1,6 +1,6 @@
 import type { Terminal } from "ghostty-web";
 
-/** Bridge ghostty-web 0.4's missing SGR wheel reporting using its public API. */
+/** Normalize vertical trackpad scrolling; other mouse events stay with Anomaly. */
 export function createMouseWheelHandler(
   terminal: Pick<
     Terminal,
@@ -10,13 +10,20 @@ export function createMouseWheelHandler(
 ): (event: WheelEvent) => boolean {
   let remainder = 0;
   return (event) => {
-    if (!terminal.hasMouseTracking() || !terminal.getMode(1006)) {
+    if (
+      event.shiftKey ||
+      !terminal.hasMouseTracking() ||
+      !terminal.getMode(1006)
+    ) {
       remainder = 0;
       return false; // Keep native scrollback and non-mouse application behavior.
     }
 
-    // Consume horizontal-only gestures instead of letting the library send Up.
-    if (event.deltaY === 0) return true;
+    // Native handling reports horizontal wheel buttons and Shift bypasses capture.
+    if (event.deltaY === 0 || Math.abs(event.deltaX) > Math.abs(event.deltaY)) {
+      remainder = 0;
+      return false;
+    }
     const rect = canvas.getBoundingClientRect();
     if (rect.width <= 0 || rect.height <= 0) return true;
     const delta =
@@ -46,10 +53,7 @@ export function createMouseWheelHandler(
       ),
     );
     const button =
-      (delta < 0 ? 64 : 65) +
-      (event.shiftKey ? 4 : 0) +
-      (event.altKey ? 8 : 0) +
-      (event.ctrlKey ? 16 : 0);
+      (delta < 0 ? 64 : 65) + (event.altKey ? 8 : 0) + (event.ctrlKey ? 16 : 0);
     for (let step = 0; step < steps; step++) {
       terminal.input(`\x1b[<${button};${col};${row}M`, true);
     }

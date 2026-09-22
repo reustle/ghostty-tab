@@ -4,8 +4,9 @@ import "./style.css";
 import { fixColorQueries } from "./color-queries.js";
 import { createTerminalFooter } from "./footer.js";
 import { fixBlackBackgrounds } from "./renderer.js";
+import { fixResetBindings } from "./reset.js";
 import { startTerminalSession } from "./session.js";
-import { getTerminalTheme } from "./theme.js";
+import { followSystemTheme } from "./theme.js";
 import { createMouseWheelHandler } from "./wheel.js";
 
 void main().catch((error) => {
@@ -29,12 +30,13 @@ async function main(): Promise<void> {
     fontFamily: 'JetBrains Mono, Menlo, Monaco, "Courier New", monospace',
     fontSize: 14,
     scrollback: 10_000,
-    theme: getTerminalTheme(),
   });
+  const stopFollowingTheme = followSystemTheme(terminal);
 
   const fitAddon = new FitAddon();
   terminal.loadAddon(fitAddon);
   terminal.open(container);
+  fixResetBindings(terminal);
   fixColorQueries(terminal);
   if (terminal.renderer) fixBlackBackgrounds(terminal.renderer);
   const canvas = container.querySelector("canvas");
@@ -55,6 +57,7 @@ async function main(): Promise<void> {
     () => {
       session.dispose();
       footer.dispose();
+      stopFollowingTheme();
       terminal.dispose();
     },
     { once: true },

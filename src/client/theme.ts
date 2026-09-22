@@ -1,23 +1,21 @@
-import type { ITheme } from "ghostty-web";
+import type { ITheme, Terminal } from "ghostty-web";
 
-export function getTerminalTheme(): ITheme {
-  // ghostty-web 0.4.0 only applies the terminal theme when open() runs.
-  // Read the current preference on each load without interrupting live shells.
-  if (!window.matchMedia("(prefers-color-scheme: light)").matches) {
+export function getTerminalTheme(
+  light = window.matchMedia("(prefers-color-scheme: light)").matches,
+): ITheme {
+  if (!light) {
     return { background: "#1e1e1e", foreground: "#d4d4d4" };
   }
 
   return {
     // macOS Terminal's Basic palette (Ghostty's bundled "Terminal Basic" theme).
     background: "#ffffff",
-    // 0.4.0's WASM config treats RGB zero as "use default" (pale gray).
-    // Near-black keeps the Basic appearance without triggering that sentinel.
-    foreground: "#010101",
+    foreground: "#000000",
     cursor: "#7f7f7f",
     cursorAccent: "#000000",
     selectionBackground: "#a4c9ff",
     selectionForeground: "#000000",
-    black: "#010101",
+    black: "#000000",
     red: "#990000",
     green: "#00a600",
     yellow: "#999900",
@@ -34,4 +32,17 @@ export function getTerminalTheme(): ITheme {
     brightCyan: "#00d8d8",
     brightWhite: "#e5e5e5",
   };
+}
+
+export function followSystemTheme(
+  terminal: Pick<Terminal, "options">,
+): () => void {
+  const preference = window.matchMedia("(prefers-color-scheme: light)");
+  const apply = () => {
+    terminal.options.theme = getTerminalTheme(preference.matches);
+    terminal.options.colorScheme = preference.matches ? "light" : "dark";
+  };
+  apply();
+  preference.addEventListener("change", apply);
+  return () => preference.removeEventListener("change", apply);
 }

@@ -57,9 +57,8 @@ Closing that page detaches from tmux without stopping the programs inside it. Op
 same URL attaches to the same session again. These sessions use a dedicated tmux socket named
 `ghostty-tab`, so they do not attach to or modify sessions on your normal tmux server.
 
-The launcher and terminal follow your browser's light or dark preference. The launcher
-updates immediately when that preference changes; reopen the tab to apply a new terminal
-palette, since ghostty-web applies its theme when the terminal opens.
+The launcher and terminal follow your browser's light or dark preference and update
+immediately when it changes, including terminal color-scheme reporting to applications.
 
 The bottom bar shows your session and SSH destination when applicable.
 Select **[ new tab ]** to open the launcher in a separate browser tab with your remembered
@@ -148,7 +147,7 @@ reverse proxy for remote access.
 - The WebSocket accepts only typed terminal input and resize messages; it does not expose a
   browser-side command or automation API.
 
-`ghostty-web` is pinned to an exact stable version in `package.json`. See
+`ghostty-web` is pinned to an exact Anomaly fork commit in `package.json`. See
 [`docs/updating-ghostty-web.md`](updating-ghostty-web.md) for the update checklist.
 
 ## License

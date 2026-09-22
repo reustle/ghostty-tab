@@ -28,6 +28,7 @@ function setup() {
   const wheel = (deltaY: number, options: WheelEventInit = {}) =>
     handle({
       deltaY,
+      deltaX: 0,
       deltaMode: 0,
       clientX: 195,
       clientY: 245,
@@ -79,15 +80,24 @@ describe("mouse wheel compatibility", () => {
     expect(sent).toEqual([]);
   });
 
-  test("does not turn horizontal scrolling into Up keys", () => {
+  test("leaves horizontal scrolling to native mouse reporting", () => {
     const { sent, wheel } = setup();
-    expect(wheel(0, { deltaX: -100 })).toBe(true);
+    expect(wheel(0, { deltaX: -100 })).toBe(false);
+    expect(wheel(20, { deltaX: -100 })).toBe(false);
     expect(sent).toEqual([]);
   });
 
   test("clamps coordinates to the grid and preserves modifiers", () => {
     const { sent, wheel } = setup();
-    wheel(-20, { clientX: 0, clientY: 1000, shiftKey: true, altKey: true });
-    expect(sent).toEqual(["\x1b[<76;1;24M"]);
+    wheel(-20, { clientX: 0, clientY: 1000, ctrlKey: true, altKey: true });
+    expect(sent).toEqual(["\x1b[<88;1;24M"]);
+  });
+
+  test("Shift bypasses application mouse capture and clears trackpad remainder", () => {
+    const { sent, wheel } = setup();
+    wheel(-15);
+    expect(wheel(-100, { shiftKey: true })).toBe(false);
+    wheel(-5);
+    expect(sent).toEqual([]);
   });
 });
