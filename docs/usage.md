@@ -60,6 +60,12 @@ same URL attaches to the same session again. These sessions use a dedicated tmux
 The launcher and terminal follow your browser's light or dark preference and update
 immediately when it changes, including terminal color-scheme reporting to applications.
 
+Terminal icons from tools such as `eza`, `lsd`, and shell prompts work without installing
+fonts. ghostty-tab bundles a Nerd Fonts symbols font and serves it directly to your browser,
+including for SSH sessions. Ordinary text uses your system's monospace fonts. No external
+font service or internet connection is required. See the [font notes](fonts/README.md) for
+the bundled version, license, and update instructions.
+
 The bottom bar shows your session and SSH destination when applicable.
 Select **[ new tab ]** to open the launcher in a separate browser tab with your remembered
 session type and SSH destination. The session name starts blank, and the current session

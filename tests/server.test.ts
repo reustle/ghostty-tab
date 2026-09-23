@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import http from "node:http";
+import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import WebSocket from "ws";
@@ -40,6 +41,33 @@ afterEach(async () => {
 });
 
 describe("HTTP and PTY integration", () => {
+  test("serves the bundled icon font with its WOFF2 content type", async () => {
+    const fontRoot = new URL("../src/client/fonts/", import.meta.url);
+    const server = await createGhosttyTabServer({
+      port: 0,
+      authConfig: createAuthConfig({ token: "font-test-token", env: {} }),
+      staticClientRoot: path.resolve(
+        fileURLToPath(new URL("../", import.meta.url)),
+      ),
+    });
+    runningServers.push(server);
+
+    const response = await request(
+      `${server.url}/src/client/fonts/SymbolsNerdFontMono-Regular.woff2`,
+    );
+    expect(response.status).toBe(200);
+    expect(response.headers["content-type"]).toBe("font/woff2");
+    const data = response.data;
+    expect(data.subarray(0, 4).toString()).toBe("wOF2");
+    expect(data).toEqual(
+      Buffer.from(
+        await Bun.file(
+          new URL("SymbolsNerdFontMono-Regular.woff2", fontRoot),
+        ).arrayBuffer(),
+      ),
+    );
+  });
+
   test("authenticates a WebSocket and accepts only input and resize messages", async () => {
     const ptys: FakePty[] = [];
     const killedSessions: string[] = [];
@@ -476,15 +504,23 @@ function get(url: string): Promise<{ status: number; body: string }> {
 function request(
   url: string,
   options: { method?: string; headers?: Record<string, string> } = {},
-): Promise<{ status: number; body: string }> {
+): Promise<{
+  status: number;
+  body: string;
+  data: Buffer;
+  headers: http.IncomingHttpHeaders;
+}> {
   return new Promise((resolve, reject) => {
     const outgoing = http.request(url, options, (response) => {
       const chunks: Buffer[] = [];
       response.on("data", (chunk: Buffer) => chunks.push(chunk));
       response.on("end", () => {
+        const data = Buffer.concat(chunks);
         resolve({
           status: response.statusCode ?? 0,
-          body: Buffer.concat(chunks).toString("utf8"),
+          body: data.toString("utf8"),
+          data,
+          headers: response.headers,
         });
       });
     });

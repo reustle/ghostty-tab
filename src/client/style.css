@@ -1,3 +1,13 @@
+@font-face {
+  font-family: "Ghostty Tab Symbols";
+  src: url("./fonts/SymbolsNerdFontMono-Regular.woff2") format("woff2");
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  /* Symbols use a full-em advance; our text fonts use roughly 0.6-em cells. */
+  size-adjust: 60%;
+}
+
 :root {
   color-scheme: dark;
   --terminal-bg: #1e1e1e;

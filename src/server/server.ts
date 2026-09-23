@@ -45,6 +45,7 @@ const MIME_TYPES: Record<string, string> = {
   ".png": "image/png",
   ".svg": "image/svg+xml",
   ".wasm": "application/wasm",
+  ".woff2": "font/woff2",
 };
 
 type PtyProcess = ReturnType<typeof pty.spawn>;
@@ -196,7 +197,10 @@ export async function createGhosttyTabServer(
       writeNotFound(response);
       return;
     }
-    await serveFile(filePath, request, response, false);
+    // Vite fingerprints bundled fonts, so browsers can reuse them across tabs.
+    const immutableFont =
+      pathname.startsWith("/assets/") && pathname.endsWith(".woff2");
+    await serveFile(filePath, request, response, immutableFont);
   }
 
   httpServer.on("upgrade", (request, socket, head) => {

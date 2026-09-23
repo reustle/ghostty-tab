@@ -16,7 +16,19 @@ void main().catch((error) => {
 });
 
 async function main(): Promise<void> {
-  await init();
+  // Canvas text is not automatically repainted when a web font finishes loading.
+  // Use an icon as the sample so the symbols-only font is actually requested.
+  await Promise.all([
+    init(),
+    document.fonts
+      .load('14px "Ghostty Tab Symbols"', "\ue5ff")
+      .catch((error) => {
+        console.warn(
+          "Could not load terminal icons; using system fonts:",
+          error,
+        );
+      }),
+  ]);
 
   const container = document.querySelector<HTMLElement>("#terminal-container");
   if (!container) {
@@ -27,7 +39,8 @@ async function main(): Promise<void> {
     cols: 80,
     rows: 24,
     cursorBlink: true,
-    fontFamily: 'JetBrains Mono, Menlo, Monaco, "Courier New", monospace',
+    fontFamily:
+      '"JetBrains Mono", Menlo, Monaco, "Courier New", "Ghostty Tab Symbols", monospace',
     fontSize: 14,
     scrollback: 10_000,
   });
