@@ -5,6 +5,7 @@ import { fixColorQueries } from "./color-queries.js";
 import { createTerminalFooter } from "./footer.js";
 import { fixBlackBackgrounds } from "./renderer.js";
 import { fixResetBindings } from "./reset.js";
+import { enableDragToCopy } from "./selection.js";
 import { startTerminalSession } from "./session.js";
 import { followSystemTheme } from "./theme.js";
 import { createMouseWheelHandler } from "./wheel.js";
@@ -54,6 +55,7 @@ async function main(): Promise<void> {
   if (terminal.renderer) fixBlackBackgrounds(terminal.renderer);
   const canvas = container.querySelector("canvas");
   if (!canvas) throw new Error("Terminal canvas was not created");
+  const stopDragToCopy = enableDragToCopy(canvas);
   terminal.attachCustomWheelEventHandler(
     createMouseWheelHandler(terminal, canvas),
   );
@@ -71,6 +73,7 @@ async function main(): Promise<void> {
       session.dispose();
       footer.dispose();
       stopFollowingTheme();
+      stopDragToCopy();
       terminal.dispose();
     },
     { once: true },

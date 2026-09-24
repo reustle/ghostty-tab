@@ -39,6 +39,10 @@ bun run start --host 127.0.0.1 --port 9000
 Persistent sessions have bookmarkable URLs and scrollable history. They use a separate
 `ghostty-tab` tmux socket. Light and dark themes follow your system preference.
 
+Drag with the left mouse button to select and automatically copy text, including in
+remote sessions. No Shift key is needed. Left-button clicks and drags are reserved
+for text selection; wheel scrolling still works in tmux and terminal applications.
+
 The server binds to `127.0.0.1` by default. It has no user accounts or TLS; use an SSH tunnel
 or an authenticated, encrypted reverse proxy for remote access.
 

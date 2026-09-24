@@ -2,6 +2,8 @@ import { afterEach, describe, expect, spyOn, test } from "bun:test";
 import { Ghostty, Terminal } from "ghostty-web";
 
 import { fixResetBindings } from "../src/client/reset.js";
+import { enableDragToCopy } from "../src/client/selection.js";
+import { createMouseWheelHandler } from "../src/client/wheel.js";
 
 let terminal: Terminal | undefined;
 let restoreCanvas: (() => void) | undefined;
@@ -50,6 +52,76 @@ async function openTerminal() {
 }
 
 describe("terminal reset bindings", () => {
+  test("drag copies without Shift under mouse capture, including after reconnect", async () => {
+    const term = await openTerminal();
+    const canvas = term.element?.querySelector("canvas");
+    if (!canvas) throw new Error("Terminal canvas missing");
+    spyOn(canvas, "getBoundingClientRect").mockReturnValue({
+      left: 0,
+      top: 0,
+      right: 800,
+      bottom: 480,
+      width: 800,
+      height: 480,
+    } as DOMRect);
+    const stop = enableDragToCopy(canvas);
+    term.attachCustomWheelEventHandler(createMouseWheelHandler(term, canvas));
+    const replies: string[] = [];
+    term.onData((data) => replies.push(data));
+    const pointer = (type: string, x: number, buttons: number) => {
+      const event = new MouseEvent(type, {
+        button: 0,
+        buttons,
+        clientX: x,
+        clientY: 5,
+        bubbles: true,
+        cancelable: true,
+      });
+      Object.defineProperties(event, {
+        offsetX: { value: x },
+        offsetY: { value: 5 },
+      });
+      canvas.dispatchEvent(event);
+    };
+    try {
+      for (const mode of [1000, 1002, 1003]) {
+        term.reset();
+        term.write(`\x1b[?${mode}h\x1b[?1006hHello world`);
+        replies.length = 0;
+        await navigator.clipboard.writeText("");
+        pointer("mousedown", 1, 1);
+        pointer("mousemove", 41, 1);
+        pointer("mouseup", 41, 0);
+        expect(term.getSelection()).toBe("Hello");
+        expect(await navigator.clipboard.readText()).toBe("Hello");
+        expect(replies).toEqual([]);
+
+        const wheel = new WheelEvent("wheel", {
+          deltaY: 20,
+          bubbles: true,
+          cancelable: true,
+        });
+        Object.defineProperties(wheel, {
+          clientX: { value: 20 },
+          clientY: { value: 20 },
+        });
+        canvas.dispatchEvent(wheel);
+        expect(replies).toEqual(["\x1b[<65;3;2M"]);
+        expect(wheel.shiftKey).toBeFalsy();
+      }
+      stop();
+      term.clearSelection();
+      replies.length = 0;
+      pointer("mousedown", 1, 1);
+      pointer("mousemove", 41, 1);
+      pointer("mouseup", 41, 0);
+      expect(term.hasSelection()).toBe(false);
+      expect(replies.length).toBeGreaterThan(0);
+    } finally {
+      stop();
+    }
+  });
+
   test("clears selection and can select below the original row count after reconnect", async () => {
     const term = await openTerminal();
     term.write("Before reset");
